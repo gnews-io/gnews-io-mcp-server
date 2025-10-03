@@ -34,7 +34,7 @@ mcp = FastMCP("gnews_api")
 
 def _resolve_key() -> str:
     headers = get_http_headers(include_all=False) or {}
-    h_key = headers.get("X-Api-Key") or headers.get("X-Api-Key")
+    h_key = headers.get("x-api-key")
     if h_key:
         return str(h_key).strip()
 
