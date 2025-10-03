@@ -30,9 +30,9 @@ _adapter = HTTPAdapter(max_retries=_retry)
 _session.mount("https://", _adapter)
 _session.mount("http://", _adapter)
 
-mcp = FastMCP("gnews")
+mcp = FastMCP("gnews_api")
 
-def _resolve_key(api_key: t.Optional[str]) -> str:
+def _resolve_key() -> str:
     headers = get_http_headers(include_all=False) or {}
     h_key = headers.get("X-Api-Key") or headers.get("X-Api-Key")
     if h_key:
