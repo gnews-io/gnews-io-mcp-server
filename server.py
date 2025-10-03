@@ -33,18 +33,13 @@ _session.mount("http://", _adapter)
 mcp = FastMCP("gnews")
 
 def _resolve_key(api_key: t.Optional[str]) -> str:
-    # 1) Explicit parameter
-    if api_key:
-        return api_key.strip()
-
-    # 2) HTTP header
     headers = get_http_headers(include_all=False) or {}
-    h_key = headers.get("GNEWS_API_KEY") or headers.get("gnews_api_key")
+    h_key = headers.get("X-Api-Key") or headers.get("X-Api-Key")
     if h_key:
         return str(h_key).strip()
 
     raise RuntimeError(
-        "GNews API key required (param 'api_key' or header 'GNEWS_API_KEY')."
+        "GNews API key required (missing header 'X-Api-Key')."
     )
 
 def _iso(value: t.Optional[str]) -> t.Optional[str]:
@@ -108,7 +103,7 @@ def _http_get(url: str, params: dict, api_key: str) -> dict:
         raise RuntimeError(f"Network error (status: {code}).") from e
 
 @mcp.tool
-def gnews_api_search(
+def search(
     q: str,
     lang: t.Optional[str] = None,
     country: t.Optional[str] = None,
@@ -118,9 +113,8 @@ def gnews_api_search(
     date_from: t.Optional[str] = None,
     date_to: t.Optional[str] = None,
     page: int = 1,
-    api_key: t.Optional[str] = None,
 ) -> dict:
-    key = _resolve_key(api_key)
+    key = _resolve_key()
     _validate_common(lang, country, max, page, date_from, date_to)
     params = {
         "q": q,
@@ -137,7 +131,7 @@ def gnews_api_search(
     return _http_get(f"{BASE_URL}/search", params, key)
 
 @mcp.tool
-def gnews_api_top_headlines(
+def top_headlines(
     category: t.Literal[
         "general","world","nation","business","technology",
         "entertainment","sports","science","health"
@@ -149,9 +143,8 @@ def gnews_api_top_headlines(
     date_from: t.Optional[str] = None,
     date_to: t.Optional[str] = None,
     page: int = 1,
-    api_key: t.Optional[str] = None,
 ) -> dict:
-    key = _resolve_key(api_key)
+    key = _resolve_key()
     _validate_common(lang, country, max, page, date_from, date_to)
     params = {
         "category": category,
@@ -170,7 +163,7 @@ def gnews_api_top_headlines(
 try:
     from fastmcp.resources import HttpResource, TextResource  # type: ignore
     CHEATSHEET = """\
-GNews Cheat Sheet:
+GNews API Cheat Sheet:
 - /search: q, lang, country, max, in, sortby, from, to, page
 - /top-headlines: category, lang, country, max, q, from, to, page
 - Dates: 'YYYY-MM-DD' ou ISO (ex: '2024-11-01T08:30:00Z')
@@ -178,20 +171,20 @@ GNews Cheat Sheet:
 """
     mcp.add_resource(TextResource(
         uri="docs://gnews/cheatsheet",
-        name="GNews Cheat Sheet",
+        name="GNews API Cheat Sheet",
         text=CHEATSHEET,
         tags={"documentation", "gnews"},
     ))
     mcp.add_resource(HttpResource(
         uri="docs://gnews/search",
         url="https://docs.gnews.io/endpoints/search-endpoint",
-        name="GNews - Search endpoint",
+        name="GNews API - Search endpoint",
         tags={"documentation", "gnews"},
     ))
     mcp.add_resource(HttpResource(
         uri="docs://gnews/top-headlines",
         url="https://docs.gnews.io/endpoints/top-headlines-endpoint",
-        name="GNews - Top Headlines endpoint",
+        name="GNews API - Top Headlines endpoint",
         tags={"documentation", "gnews"},
     ))
 except Exception:
