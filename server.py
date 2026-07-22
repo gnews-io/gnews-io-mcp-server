@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import typing as t
+from datetime import date, datetime
 
 import requests
 from fastmcp import FastMCP
@@ -48,8 +49,21 @@ def _iso(value: t.Optional[str]) -> t.Optional[str]:
     v = value.strip()
     return v + "T00:00:00Z" if len(v) == 10 and re.match(r"^\d{4}-\d{2}-\d{2}$", v) else v
 
-def _clamp(n: int, lo: int, hi: int) -> int:
-    return max(lo, min(hi, n))
+def _validate_date(value: str, name: str) -> None:
+    try:
+        if len(value) == 10:
+            date.fromisoformat(value)
+        else:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError(f"'{name}' is invalid. ISO 8601 format required (e.g. '2024-11-01' or '2024-11-01T08:30:00Z').")
+
+def _validate_in_fields(in_fields: str) -> None:
+    allowed = {"title", "description", "content"}
+    fields = {f.strip() for f in in_fields.split(",")}
+    invalid = fields - allowed
+    if invalid:
+        raise ValueError(f"Parameter 'in' invalid: {', '.join(sorted(invalid))}. Allowed values: title, description, content.")
 
 def _validate_common(
     lang: t.Optional[str],
@@ -64,14 +78,12 @@ def _validate_common(
     if country is not None and not re.match(r"^[a-zA-Z]{2}$", country):
         raise ValueError("Parameter 'country' invalid (2 letters, e.g. 'fr').")
     if page < 1:
-        raise ValueError("'page' must be greater than 1.")
+        raise ValueError("'page' must be greater than or equal to 1.")
     if not (1 <= max_results <= 100):
         raise ValueError("'max' must be between 1 and 100.")
     for d, name in ((date_from, "date_from"), (date_to, "date_to")):
-        if d is None:
-            continue
-        if len(d) == 10 and not re.match(r"^\d{4}-\d{2}-\d{2}$", d):
-            raise ValueError(f"'{name}' is invalid. IS 8601 format required.")
+        if d is not None:
+            _validate_date(d, name)
 
 def _http_get(url: str, params: dict, api_key: str) -> dict:
     params = {k: v for k, v in params.items() if v is not None}
@@ -116,11 +128,13 @@ def search(
 ) -> dict:
     key = _resolve_key()
     _validate_common(lang, country, max, page, date_from, date_to)
+    if in_fields is not None:
+        _validate_in_fields(in_fields)
     params = {
         "q": q,
         "lang": lang.lower() if lang else None,
         "country": country.lower() if country else None,
-        "max": _clamp(max, 1, 100),
+        "max": max,
         "in": in_fields,
         "sortby": sortby,
         "from": _iso(date_from),
@@ -150,7 +164,7 @@ def top_headlines(
         "category": category,
         "lang": lang.lower() if lang else None,
         "country": country.lower() if country else None,
-        "max": _clamp(max, 1, 100),
+        "max": max,
         "q": q,
         "from": _iso(date_from),
         "to": _iso(date_to),
@@ -191,7 +205,6 @@ except Exception:
     log.debug("fastmcp.resources not available: no resource registration (ok).")
 
 if __name__ == "__main__":
-    import os
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
     mcp.run(transport="http", host=host, port=port, path="/")
