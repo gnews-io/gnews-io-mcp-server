@@ -1,5 +1,5 @@
 # Direct dependencies (transitive deps resolved by pip)
-fastmcp==3.4.4
+fastmcp==4.0.11
 posthog==7.64.1
 requests==2.34.2
-urllib3==2.7.0
+urllib3==2.8.0

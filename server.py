@@ -66,7 +66,7 @@ def _track_tool_call(context: MiddlewareContext, error: t.Optional[Exception], d
         api_key = str((get_http_headers(include_all=False) or {}).get("x-api-key", "")).strip()
         session = context.fastmcp_context.session if context.fastmcp_context else None
         client_params = getattr(session, "client_params", None)
-        client = client_params.clientInfo if client_params else None
+        client = client_params.client_info if client_params else None
         args = context.message.arguments or {}
         _posthog.capture(
             "tool_called",
