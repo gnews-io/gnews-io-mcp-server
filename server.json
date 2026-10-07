@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.gnews-io/gnews",
+  "title": "GNews",
+  "description": "Official GNews API server: search news articles and top headlines from 80,000+ sources.",
+  "version": "1.0.0",
+  "websiteUrl": "https://gnews.io/",
+  "repository": {
+    "url": "https://github.com/gnews-io/gnews-io-mcp-server",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/gnews-io/gnews-io-mcp-server/main/icon.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.gnews.io/",
+      "headers": [
+        {
+          "name": "X-Api-Key",
+          "description": "Your GNews API key. Get a free key at https://gnews.io/register",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}
