@@ -1,12 +1,16 @@
+import hashlib
 import logging
 import os
 import re
+import time
 import typing as t
 from datetime import date, datetime
 
 import requests
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_headers
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+from posthog import Posthog
 from requests import Session
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -31,7 +35,58 @@ _adapter = HTTPAdapter(max_retries=_retry)
 _session.mount("https://", _adapter)
 _session.mount("http://", _adapter)
 
-mcp = FastMCP("gnews_api")
+POSTHOG_API_KEY = os.getenv("POSTHOG_API_KEY")
+_posthog = (
+    Posthog(POSTHOG_API_KEY, host=os.getenv("POSTHOG_HOST", "https://eu.i.posthog.com"))
+    if POSTHOG_API_KEY
+    else None
+)
+TRACKED_ARGS = ("lang", "country", "category", "max", "page", "sortby")
+
+
+class UsageTracking(Middleware):
+    """One PostHog event per tool call. The GNews API key is hashed, the query text is not sent."""
+
+    async def on_call_tool(self, context: MiddlewareContext, call_next):
+        start = time.monotonic()
+        error: t.Optional[Exception] = None
+        try:
+            return await call_next(context)
+        except Exception as e:
+            error = e
+            raise
+        finally:
+            _track_tool_call(context, error, time.monotonic() - start)
+
+
+def _track_tool_call(context: MiddlewareContext, error: t.Optional[Exception], duration: float) -> None:
+    if _posthog is None:
+        return
+    try:
+        api_key = str((get_http_headers(include_all=False) or {}).get("x-api-key", "")).strip()
+        session = context.fastmcp_context.session if context.fastmcp_context else None
+        client_params = getattr(session, "client_params", None)
+        client = client_params.clientInfo if client_params else None
+        args = context.message.arguments or {}
+        _posthog.capture(
+            "tool_called",
+            distinct_id=hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else "anonymous",
+            properties={
+                "tool": context.message.name,
+                "client_name": client.name if client else None,
+                "client_version": client.version if client else None,
+                "success": error is None,
+                "error": str(error)[:200] if error else None,
+                "duration_ms": round(duration * 1000),
+                **{name: args.get(name) for name in TRACKED_ARGS if args.get(name) is not None},
+                "$process_person_profile": False,
+            },
+        )
+    except Exception:
+        log.exception("Usage tracking failed")
+
+
+mcp = FastMCP("gnews_api", middleware=[UsageTracking()])
 
 def _resolve_key() -> str:
     headers = get_http_headers(include_all=False) or {}

@@ -78,6 +78,8 @@ This example retrieves the **5 top headlines** from the "technology" category in
 - This server acts as a proxy: it does not store **any API keys**.
   Your key is transmitted directly to **GNews API** with each request.
 - Always use an **HTTPS** connection to communicate with the server to ensure your key is encrypted in transit.
+- The hosted server records anonymous usage statistics for each tool call: tool name, MCP client name and version, success or error, duration, and the `lang`, `country`, `category`, `max`, `page` and `sortby` parameters.
+  Your API key is only recorded as a one-way hash, and your search queries are never recorded.
 
 ---
 
