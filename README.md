@@ -21,6 +21,8 @@ The API key must be provided in the following way:
 
 ## 🔗 MCP Integration
 
+This server is listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.gnews-io/gnews) as `io.github.gnews-io/gnews`.
+
 ### With Claude Code
 
 Add the server to your **Claude Code** configuration with the following command:
